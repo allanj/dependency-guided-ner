@@ -40,7 +40,7 @@ The model locates in package ```com.statnlp.projects.entity.semi```, you can run
 
 ##### Data
 
-In the paper, we use the Broadcast News portion in the OntoNotes 5.0 dataset. You can access [OntoNotes 5.0](https://catalog.ldc.upenn.edu/LDC2013T19) in LDC to download it. We have the preprocessing code in ```data.preproecess``` to help you preprocess the raw data obtained from LDC. We support the CoNLL-X format if you want to run other datasets.
+In the paper, we use the Broadcast News portion in the OntoNotes 5.0 dataset. You can access [OntoNotes 5.0](https://catalog.ldc.upenn.edu/LDC2013T19) in LDC to download it. We have the preprocessing code in ```data.preproecess``` to help you preprocess the raw data obtained from LDC. We support the CoNLL-X format if you want to run other datasets. We also use Stanford CoreNLP API to preprocess the data. 
 
 ##### Features
 
