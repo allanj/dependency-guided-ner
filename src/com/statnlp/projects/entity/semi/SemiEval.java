@@ -11,7 +11,7 @@ import com.statnlp.commons.types.Sentence;
 public class SemiEval {
 
 	
-	public static boolean windows = false;
+	public static boolean windows = true;
 	/**
 	 * 
 	 * @param testInsts
@@ -41,9 +41,9 @@ public class SemiEval {
 			System.err.println("perl data/semeval10t1/conlleval.pl < "+outputFile);
 			ProcessBuilder pb = null;
 			if(windows){
-				pb = new ProcessBuilder("D:/Perl64/bin/perl","E:/Framework/data/semeval10t1/conlleval.pl"); 
+				pb = new ProcessBuilder("D:/Perl64/bin/perl","eval/conlleval.pl"); 
 			}else{
-				pb = new ProcessBuilder("data/semeval10t1/conlleval.pl"); 
+				pb = new ProcessBuilder("eval/conlleval.pl"); 
 			}
 			pb.redirectInput(new File(outputFile));
 			pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);

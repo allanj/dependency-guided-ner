@@ -14,23 +14,28 @@ import com.statnlp.commons.types.Sentence;
 import com.statnlp.commons.types.WordToken;
 
 import edu.stanford.nlp.trees.EnglishGrammaticalStructure;
+import edu.stanford.nlp.trees.GrammaticalStructureConversionUtils;
 
 public class OntoNotesProcess {
 
 	
 	public static String[] datasets = {"bc","bn","mz","nw","tc","wb"};
+//	public static String[] datasets = {"bc"};
 	public static String[] valid = {"PERSON", "ORG", "GPE","NORP","FAC","LOC","PRODUCT","DATE","TIME","PERCENT","MONEY","QUANTITY","ORDINAL","CARDINAL","EVENT","WORK_OF_ART","LAW","LANGUAGE"};
 	public static HashSet<String> validSet;
 	public static HashSet<String> dataNames;
 	
-	public static String[] fileType = {"train","development","conll-2012-test"};
-	public static String filePrefix = "F:/phd/data/conll-formatted-ontonotes-5.0/data";
+//	public static String[] fileType = {"train","development","conll-2012-test", "test"};
+	public static String[] fileType = {"test"};
+//	public static String data = "pradhan-ontonotes";
+	public static String data = "conll2012-processed";
+	public static String filePrefix = "F:/data/"+data+"/data";
 //	public static String filePrefix = "F:/phd/data/conll2012/data";
-	public static String outputPrefx = "E:/Framework/data/ontonotes/";
+	public static String outputPrefx = "F:/data/"+data+"/processed_gold_ud";
 	
-	public static String tmpParse = "D:/Downloads/tmp/tmp.parse";
-	public static String tmpConllOut = "D:/Downloads/tmp/tmpOut.conll";
-	public static String tmpConllErr = "D:/Downloads/tmp/tmp.err";
+	public static String tmpParse = "F:/data/"+data+"/tmp/tmp.parse";
+	public static String tmpConllOut = "F:/data/"+data+"/tmp/tmpOut.conll";
+	public static String tmpConllErr = "F:/data/"+data+"/tmp/tmp.err";
 	
 	public static void process() throws IOException, InterruptedException{
 		dataNames = new HashSet<String>();
@@ -50,15 +55,18 @@ public class OntoNotesProcess {
 					String[] subNames = subFile.list();
 					ArrayList<Sentence> sents = new ArrayList<Sentence>();
 					for(String program: subNames){
-						if(newstype.equals("nw") &&  (program.equals("p2.5_c2e") || program.equals("dev_09_c2e")) ) continue;
+						if(newstype.equals("nw") &&  (program.equals("p2.5_c2e") || program.equals("dev_09_c2e")) ) continue;  //these files do not have .name file.
 						if(newstype.equals("wb") &&  ( program.equals("dev_09_c2e")|| program.equals("sel")) ) continue;
 						File programFolder = new File(currPrefix+"/"+newstype+"/"+program); //abc/cctc/cnn/so on
 						String[] numFolderList = programFolder.list();  //cnn/00 ,01,02,
 						for(String numFolderName: numFolderList){
+//							if(newstype.equals("nw") &&  program.equals("wsj") && (numFolderName.equals("00") || numFolderName.equals("01")|| numFolderName.equals("24")) ) continue;
 							File numFolder = new File(currPrefix+"/"+newstype+"/"+program+"/"+numFolderName); //abc/00 folder
 							String[] textFileList = numFolder.list();
 							for(String textFile: textFileList){  //the textfile inside the number folder
-								if(textFile.endsWith("_conll")){  //_gold_parse_conll
+//								if(textFile.endsWith("_conll")){  //_gold_parse_conll
+								if(textFile.endsWith("_gold_parse_conll")){  //_gold_parse_conll for test  _gold_conll for train/dev
+//								if(textFile.endsWith("_auto_parse_conll")){  //_gold_parse_conll
 									numToken+=processNameFile(currPrefix+"/"+newstype+"/"+program+"/"+numFolderName+"/"+textFile, sents);
 								}
 							}
@@ -104,7 +112,8 @@ public class OntoNotesProcess {
 				System.setOut(out);
 //				System.setErr(err);
 				//-basic -keepPunct  -language en-sd -conllx -makeCopulaHead -treeFile D:/Downloads/cnn_0103.parse
-				EnglishGrammaticalStructure.main(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse});
+//				EnglishGrammaticalStructure.main(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse, "-language", "en"}); // en-sd if use Stanford dependency
+				GrammaticalStructureConversionUtils.convertTrees(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse}, "en");// en-sd if use Stanford dependency 
 				System.setOut(System.out);
 //				System.setErr(System.err);
 				BufferedReader depReader = RAWF.reader(tmpConllOut);
@@ -200,15 +209,24 @@ public class OntoNotesProcess {
 	 */
 	private static void printConll(String datasetName, ArrayList<Sentence> sents, String fileType) throws IOException{
 		if(fileType.equals("development")) fileType = "dev";
-		if(fileType.equals("conll-2012-test")) fileType = "test";
+//		if(fileType.equals("conll-2012-test")) fileType = "test-short";
 		PrintWriter pw = RAWF.writer(outputPrefx+"/"+datasetName+"/"+fileType+".conllx");
 		System.err.println("dataset:"+datasetName+" type:"+fileType+" size:"+sents.size());
+		int num_entities = 0;
+		int num_tokens = 0;
 		for(Sentence sent: sents){
-			for(int i=1; i<sent.length(); i++)
+			num_tokens += sent.length() - 1;
+			for(int i=1; i<sent.length(); i++) {
 				pw.write(i+"\t"+sent.get(i).getName()+"\t_\t"+sent.get(i).getTag()+"\t"+sent.get(i).getTag()+"\t_\t"+sent.get(i).getHeadIndex()+"\t"+sent.get(i).getDepLabel()+"\t_\t_\t"+sent.get(i).getEntity()+"\n");
+				if (sent.get(i).getEntity().startsWith("B-")) {
+					num_entities ++;
+				}
+			}
 			pw.write("\n");
 		}
-	
+		
+		System.err.println("num tokens: "+ num_tokens + " num_entities: " + num_entities);
+		System.err.println();
 		pw.close();
 	}
 
