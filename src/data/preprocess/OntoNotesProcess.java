@@ -13,7 +13,6 @@ import com.statnlp.commons.io.RAWF;
 import com.statnlp.commons.types.Sentence;
 import com.statnlp.commons.types.WordToken;
 
-import edu.stanford.nlp.trees.EnglishGrammaticalStructure;
 import edu.stanford.nlp.trees.GrammaticalStructureConversionUtils;
 
 public class OntoNotesProcess {
@@ -25,17 +24,14 @@ public class OntoNotesProcess {
 	public static HashSet<String> validSet;
 	public static HashSet<String> dataNames;
 	
-//	public static String[] fileType = {"train","development","conll-2012-test", "test"};
-	public static String[] fileType = {"test"};
-//	public static String data = "pradhan-ontonotes";
-	public static String data = "conll2012-processed";
-	public static String filePrefix = "F:/data/"+data+"/data";
-//	public static String filePrefix = "F:/phd/data/conll2012/data";
-	public static String outputPrefx = "F:/data/"+data+"/processed_gold_ud";
+	public static String[] fileType = {"train","development","conll-2012-test"};
 	
-	public static String tmpParse = "F:/data/"+data+"/tmp/tmp.parse";
-	public static String tmpConllOut = "F:/data/"+data+"/tmp/tmpOut.conll";
-	public static String tmpConllErr = "F:/data/"+data+"/tmp/tmp.err";
+	public static String tmpParse = "F:/data/conll2012/tmp/tmp.parse";
+	public static String tmpConllOut = "F:/data/conll2012/tmp/tmpOut.conll";
+	public static String tmpConllErr = "F:/data/conll2012/tmp/tmp.err";
+	
+	public static String output_folder = "ontonotes_conll_format";  //only need to change these two parameters during running
+	public static boolean useStanfordDep = true; //only need to change these two parameters during running
 	
 	public static void process() throws IOException, InterruptedException{
 		dataNames = new HashSet<String>();
@@ -44,6 +40,21 @@ public class OntoNotesProcess {
 		for(int i=0;i<valid.length;i++) { validSet.add(valid[i]);}
 		
 		for(int f=0;f<fileType.length;f++){
+			String data = null;
+			if (fileType[f].equals("conll-2012-test")) {
+				data = "pradhan-processed";  //test set use this one
+			} else if (fileType[f].equals("train") || fileType[f].equals("development")) {
+				data = "conll2012-official-processed"; //training, dev use this one
+			} else {
+				throw new RuntimeException("unknow type: " + fileType[f]);
+			}
+			String filePrefix = "F:/data/conll2012/"+data+"/data";
+			String outputPrefix = useStanfordDep? "F:/data/conll2012/"+output_folder+"_sd" : "F:/data/conll2012/"+output_folder+"_ud";
+			File directory = new File(outputPrefix);
+		    if (! directory.exists()){
+		        directory.mkdir();
+		    }
+			
 			String currPrefix = filePrefix+"/"+fileType[f]+"/data/english/annotations";
 			File file = new File(currPrefix);
 			String[] names = file.list();
@@ -63,11 +74,9 @@ public class OntoNotesProcess {
 //							if(newstype.equals("nw") &&  program.equals("wsj") && (numFolderName.equals("00") || numFolderName.equals("01")|| numFolderName.equals("24")) ) continue;
 							File numFolder = new File(currPrefix+"/"+newstype+"/"+program+"/"+numFolderName); //abc/00 folder
 							String[] textFileList = numFolder.list();
-							for(String textFile: textFileList){  //the textfile inside the number folder
-//								if(textFile.endsWith("_conll")){  //_gold_parse_conll
-								if(textFile.endsWith("_gold_parse_conll")){  //_gold_parse_conll for test  _gold_conll for train/dev
-//								if(textFile.endsWith("_auto_parse_conll")){  //_gold_parse_conll
-									numToken+=processNameFile(currPrefix+"/"+newstype+"/"+program+"/"+numFolderName+"/"+textFile, sents);
+							for(String textFile: textFileList){  
+								if(textFile.endsWith("gold_conll")){ 
+									numToken+=processNameFile(currPrefix+"/"+newstype+"/"+program+"/"+numFolderName+"/"+textFile, sents, useStanfordDep);
 								}
 							}
 						}
@@ -75,7 +84,7 @@ public class OntoNotesProcess {
 					}
 					System.err.println("[Info] Finishing "+fileType[f]+" dataset:"+newstype);
 					//print these sentences. write to Files
-					printConll(newstype,sents, fileType[f]);
+					printConll(outputPrefix, newstype,sents, fileType[f]);
 				}
 			}
 			System.err.println("[Info] number of token:"+numToken);
@@ -84,7 +93,7 @@ public class OntoNotesProcess {
 		
 	}
 	
-	private static int processNameFile(String filePath, ArrayList<Sentence> sents) throws IOException{
+	private static int processNameFile(String filePath, ArrayList<Sentence> sents, boolean sd) throws IOException{
 		BufferedReader reader = RAWF.reader(filePath);
 		PrintWriter pw = RAWF.writer(tmpParse);
 		String line = null;
@@ -111,9 +120,10 @@ public class OntoNotesProcess {
 //				PrintStream err = new PrintStream(new FileOutputStream(tmpConllErr));
 				System.setOut(out);
 //				System.setErr(err);
+				String dep_format = sd ? "en-sd" : "en"; //stanford dep or universal dep
 				//-basic -keepPunct  -language en-sd -conllx -makeCopulaHead -treeFile D:/Downloads/cnn_0103.parse
 //				EnglishGrammaticalStructure.main(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse, "-language", "en"}); // en-sd if use Stanford dependency
-				GrammaticalStructureConversionUtils.convertTrees(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse}, "en");// en-sd if use Stanford dependency 
+				GrammaticalStructureConversionUtils.convertTrees(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse}, dep_format);// en-sd if use Stanford dependency 
 				System.setOut(System.out);
 //				System.setErr(System.err);
 				BufferedReader depReader = RAWF.reader(tmpConllOut);
@@ -207,10 +217,14 @@ public class OntoNotesProcess {
 	 * @param fileType: train/test/development
 	 * @throws IOException
 	 */
-	private static void printConll(String datasetName, ArrayList<Sentence> sents, String fileType) throws IOException{
+	private static void printConll(String outputPrefix, String datasetName, ArrayList<Sentence> sents, String fileType) throws IOException{
 		if(fileType.equals("development")) fileType = "dev";
-//		if(fileType.equals("conll-2012-test")) fileType = "test-short";
-		PrintWriter pw = RAWF.writer(outputPrefx+"/"+datasetName+"/"+fileType+".conllx");
+		if(fileType.equals("conll-2012-test")) fileType = "test";
+		File directory = new File(outputPrefix+"/"+datasetName);
+	    if (! directory.exists()){
+	        directory.mkdir();
+	    }
+		PrintWriter pw = RAWF.writer(outputPrefix+"/"+datasetName+"/"+fileType+".conllx");
 		System.err.println("dataset:"+datasetName+" type:"+fileType+" size:"+sents.size());
 		int num_entities = 0;
 		int num_tokens = 0;
