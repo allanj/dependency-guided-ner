@@ -24,13 +24,15 @@ public class OntoNotesProcess {
 	public static HashSet<String> validSet;
 	public static HashSet<String> dataNames;
 	
-	public static String[] fileType = {"train","development","conll-2012-test"};
+	public static String[] fileType = {"train","development","conll-2012-test"}; //for english
+//	public static String[] fileType = {"train","development","test"}; //for chinese
 	
 	public static String tmpParse = "F:/data/conll2012/tmp/tmp.parse";
 	public static String tmpConllOut = "F:/data/conll2012/tmp/tmpOut.conll";
 	public static String tmpConllErr = "F:/data/conll2012/tmp/tmp.err";
 	
-	public static String output_folder = "ontonotes_conll_format";  //only need to change these two parameters during running
+	public static String output_folder = "ontonotes_english";  //only need to change these two parameters during running
+	public static String lang = "en"; //en or zh
 	public static boolean useStanfordDep = true; //only need to change these two parameters during running
 	
 	public static void process() throws IOException, InterruptedException{
@@ -46,7 +48,10 @@ public class OntoNotesProcess {
 			} else if (fileType[f].equals("train") || fileType[f].equals("development")) {
 				data = "conll2012-official-processed"; //training, dev use this one
 			} else {
-				throw new RuntimeException("unknow type: " + fileType[f]);
+				if (fileType[f].equals("test") && lang.equals("zh")) {
+					data = "conll2012-official-processed"; // for chinese all use train, dev, test on official
+				} else 
+					throw new RuntimeException("unknow type: " + fileType[f]);
 			}
 			String filePrefix = "F:/data/conll2012/"+data+"/data";
 			String outputPrefix = useStanfordDep? "F:/data/conll2012/"+output_folder+"_sd" : "F:/data/conll2012/"+output_folder+"_ud";
@@ -54,8 +59,8 @@ public class OntoNotesProcess {
 		    if (! directory.exists()){
 		        directory.mkdir();
 		    }
-			
-			String currPrefix = filePrefix+"/"+fileType[f]+"/data/english/annotations";
+			String language =  lang.equals("zh")? "chinese" : "english"; 
+			String currPrefix = filePrefix+"/"+fileType[f]+"/data/"+language+"/annotations";
 			File file = new File(currPrefix);
 			String[] names = file.list();
 			int numToken = 0;
@@ -115,16 +120,16 @@ public class OntoNotesProcess {
 				wts.toArray(wtarr);
 				Sentence sent = new Sentence(wtarr);
 				pw.close();
-
 				PrintStream out = new PrintStream(new FileOutputStream(tmpConllOut));
 //				PrintStream err = new PrintStream(new FileOutputStream(tmpConllErr));
+				PrintStream console = System.out;
 				System.setOut(out);
 //				System.setErr(err);
-				String dep_format = sd ? "en-sd" : "en"; //stanford dep or universal dep
+				String dep_format = sd ? lang+"-sd" : lang; //stanford dep or universal dep
 				//-basic -keepPunct  -language en-sd -conllx -makeCopulaHead -treeFile D:/Downloads/cnn_0103.parse
 //				EnglishGrammaticalStructure.main(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse, "-language", "en"}); // en-sd if use Stanford dependency
 				GrammaticalStructureConversionUtils.convertTrees(new String[]{"-basic","-keepPunct","-conllx","-treeFile",tmpParse}, dep_format);// en-sd if use Stanford dependency 
-				System.setOut(System.out);
+				System.setOut(console);
 //				System.setErr(System.err);
 				BufferedReader depReader = RAWF.reader(tmpConllOut);
 				String depLine = null;
@@ -156,7 +161,13 @@ public class OntoNotesProcess {
 			String pos = vals[4]; 
 			//if(pos.equals("XX")) throw new RuntimeException("POS: "+pos+" No POS tag:\n"+filePath);
 			String parseBit = vals[5];
-			parseBit = parseBit.replace("*", "("+pos+" "+word+")");
+			if(word.equals("［") || word.equals("〈")||word.equals("＜")||word.equals("｛")) {
+				word = "-LRB-";
+			} 
+			if(word.equals("］")|| word.equals("〉")|| word.equals("＞")||word.equals("｝")) {
+				word = "-RRB-";
+			}
+			parseBit = parseBit.replace("*", "("+pos+" "+word+")");  
 			pw.write(parseBit+"\n");
 
 			String[] infos = getCurrEntity(prevEntity, prevLine, vals[10]);
