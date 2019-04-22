@@ -1,5 +1,5 @@
 
-<h1> Dependency-Guided Named Entity Recognition
+## Dependency-Guided Named Entity Recognition
 ==================
 
 This package contains the work implemented using the [**StatNLP**](http://www.statnlp.org/statnlp-framework) framework and we will keep updating to make it more efficient. Most of the project implemented with the Conditional Random Fields (CRF) model in Java.
